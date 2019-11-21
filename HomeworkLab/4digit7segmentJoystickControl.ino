@@ -40,11 +40,11 @@ int minThreshold = 400;
 int maxThreshold = 600;
 
 bool locked_display[noOfDisplays] = {
-	true, true, true, true
+  false, false, false, false
 }; 
 
 int display_value[noOfDisplays] = {
-	0, 0, 0, 0
+  0, 0, 0, 0
 };
 // segments array
 int segments[segSize] = {
@@ -71,129 +71,133 @@ byte digitMatrix[noOfDigits][segSize - 1] = {
 };
 
 void displayNumber(byte digit, int num) {
-	
-	for (int i = 0; i < segSize - 1; i++) {
-		digitalWrite(segments[i], digitMatrix[digit][i]);
-	}
+  
+  for (int i = 0; i < segSize - 1; i++) {
+    digitalWrite(segments[i], digitMatrix[digit][i]);
+  }
 
-	// set decimal point state
-	// if display number num is the current one then decimal point will blink
-	// if display number num is blocked then decimal point is LOW
-	// if display number num isn't blocked then decimal point is HIGH
-	if (num == current_display) {
-		if (millis() - lastBlink > 200) {
-			blinkState = (blinkState == LOW) ? HIGH:LOW;
+  // set decimal point state
+  if (num == current_display && locked_display[num] == true) {
+    if (millis() - lastBlink > 200) {
+      blinkState = (blinkState == LOW) ? HIGH:LOW;
       lastBlink = millis();
-		}
-		digitalWrite(segments[segSize - 1], blinkState);
-	} else if (locked_display[num] == true) {
-		digitalWrite(segments[segSize - 1], LOW);
-	} else if (locked_display[num] == false) {
-		digitalWrite(segments[segSize - 1], HIGH);
-	}
+    }
+    digitalWrite(segments[segSize - 1], blinkState);
+  } else if (num == current_display && locked_display[num] == false) {
+    digitalWrite(segments[segSize - 1], HIGH);
+  } else {
+    digitalWrite(segments[segSize - 1], LOW);
+  }
+  
 
 }
 
 void showDigit(int num) {
-	for (int i = 0; i < noOfDisplays; i++) {
-		digitalWrite(digits[i], HIGH);
-	}
+  for (int i = 0; i < noOfDisplays; i++) {
+    digitalWrite(digits[i], HIGH);
+  }
 
-	digitalWrite(digits[num], LOW);
+  digitalWrite(digits[num], LOW);
 }
 
 void setup() {
-	for (int i = 0; i < segSize; i++) {
-		pinMode(segments[i], OUTPUT);
-	}
+  for (int i = 0; i < segSize; i++) {
+    pinMode(segments[i], OUTPUT);
+  }
 
-	for (int i = 0; i < noOfDisplays; i++) {
-		pinMode(digits[i], OUTPUT);
-	}
+  for (int i = 0; i < noOfDisplays; i++) {
+    pinMode(digits[i], OUTPUT);
+  }
 
-	pinMode(pinSW, INPUT_PULLUP);
+  pinMode(pinSW, INPUT_PULLUP);
 
-	current_display = 0;
+  current_display = 0;
 
-	Serial.begin(9600);
+  Serial.begin(9600);
 }
 
 void loop() {
 
-  	Serial.println(current_display);
-  	Serial.println(display_value[current_display]);
-	xValue = analogRead(pinX);
+    Serial.println(current_display);
+    Serial.println(display_value[current_display]);
+  xValue = analogRead(pinX);
 
-	if (xValue < minThreshold && joyMoved == false) {
-		if (current_display == 0) {
-			current_display = 3;
-		} else {
-			current_display--;	
-		}
+  if (xValue < minThreshold && joyMoved == false) {
+    if (locked_display[current_display] == false){
 
-		joyMoved = true;
-	}
+      if (current_display == 0) {
+        current_display = 3;
+      } else {
+        current_display--;  
+      }
+    }
 
-	if (xValue > maxThreshold && joyMoved == false) {
-		if (current_display == 3) {
-			current_display = 0;
-		} else {
-			current_display++;
-		}
+    joyMoved = true;
+  }
 
-		joyMoved = true;
-	}
+  if (xValue > maxThreshold && joyMoved == false) {
+    if (locked_display[current_display] == false) {
+      if (current_display == 3) {
+        current_display = 0;
+      } else {
+        current_display++;
+      }
+    }
 
-	yValue = analogRead(pinY);
 
-	if (yValue < minThreshold && joyMoved == false && locked_display[current_display] == false) {
-		if(locked_display[current_display] == false) {
+    joyMoved = true;
+  }
 
-			if (display_value[current_display] == 0) {
-				display_value[current_display] = 9;
-			} else {
-				display_value[current_display]--;
-			}
-		}
+  yValue = analogRead(pinY);
 
-		Serial.println("moved od oy");
+  if (yValue < minThreshold && joyMoved == false) {
+    if(locked_display[current_display] == true) {
 
-		joyMoved = true;
-	}
+      if (display_value[current_display] == 0) {
+        display_value[current_display] = 9;
+      } else {
+        display_value[current_display]--;
+      }
+    }
 
-	if (yValue > maxThreshold && joyMoved == false) {
-		if(locked_display[current_display] == false) {
+    Serial.println("moved od oy");
 
-			if (display_value[current_display] == 9) {
-				display_value[current_display] = 0;
-			} else {
-				display_value[current_display]++;
-			}
+    joyMoved = true;
+  }
 
-			
-		}
-		Serial.println("moved od oy");
-		joyMoved = true;
-	}
+  if (yValue > maxThreshold && joyMoved == false) {
+    if(locked_display[current_display] == true) {
 
-	if (yValue <= maxThreshold && yValue >= minThreshold && xValue <= maxThreshold && xValue >= minThreshold) {
-		joyMoved = false;
-	}
+      if (display_value[current_display] == 9) {
+        display_value[current_display] = 0;
+      } else {
+        display_value[current_display]++;
+      }
 
-	swState = digitalRead(pinSW);
+      
+    }
+    Serial.println("moved od oy");
+    joyMoved = true;
+  }
 
-	if (swState != lastSwState) {
-		if (swState == LOW) {
-			locked_display[current_display] = !locked_display[current_display];
-			Serial.println("Presses");
-		}
+  if (yValue <= maxThreshold && yValue >= minThreshold && xValue <= maxThreshold && xValue >= minThreshold) {
+    joyMoved = false;
+  }
 
-	}
-	lastSwState = swState;
+  swState = digitalRead(pinSW);
 
-	for (int i = 0; i < noOfDisplays; i++) {
-		showDigit(i);
-		displayNumber(display_value[i], i);
-		delay(5);
-	}
+  if (swState != lastSwState) {
+    if (swState == LOW) {
+      locked_display[current_display] = !locked_display[current_display];
+      Serial.println("Presses");
+    }
+
+  }
+  lastSwState = swState;
+
+  for (int i = 0; i < noOfDisplays; i++) {
+    showDigit(i);
+    displayNumber(display_value[i], i);
+    delay(5);
+  }
 }
